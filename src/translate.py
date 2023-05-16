@@ -11,16 +11,19 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class ChatTranslator:
     def __init__(self, gpt_model="gpt-3.5-turbo"):
-        load_dotenv(dotenv_path='../.env')
+        load_dotenv(dotenv_path='.env')
         self._api_key = os.environ.get('OPENAI_API_KEY')
         self._model = os.environ.get('OPENAI_MODEL')
-        self._temperature = os.environ.get('OPENAI_TEMPERATURE')
+        self._temperature = float(os.environ.get('OPENAI_TEMPERATURE'))
         if not self._api_key:
-            raise ValueError("OPENAI_API_KEY is not set")
+            logging.error("OPENAI_API_KEY is not set")
         if not self._model:
             self._model = gpt_model
 
     def translate(self, sentence="", target_language="english", temperature=-1):
+        if not self._api_key:
+            logging.error("OPENAI_API_KEY is not set")
+            return
         openai.api_key = self._api_key
         if temperature == -1:
             temperature = self._temperature
@@ -77,6 +80,7 @@ class ChatTranslator:
                 return None
 
 
-a = ChatTranslator()
+if __name__ == '__main__':
+    a = ChatTranslator()
 
-a.translate()
+    a.translate()
