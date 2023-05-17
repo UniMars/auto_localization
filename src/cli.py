@@ -4,8 +4,6 @@ import os
 
 from dotenv import load_dotenv
 
-from src.translate import ChatTranslator
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -21,9 +19,11 @@ def initiate(args):
 
 def create(args):
     logging.info(f"create project{args}")
-    ct = ChatTranslator()
-    res = ct.translate()
-    logging.info(res)
+    if args.force:
+        logging.info("force create")
+    # ct = ChatTranslator()
+    # res = ct.translate()
+    # logging.info(res)
 
 
 def update(args):
@@ -38,7 +38,7 @@ def cli():
 
     parser_create = subparsers.add_parser('create', help='初始化其他语言的文档')
     parser_create.set_defaults(func=create)
-    parser_create.add_argument("-a", "--arg", help="argument")
+    parser_create.add_argument("-f", "--force",action="store_true", help="强制覆盖已有的部分")
 
     parser_update = subparsers.add_parser('update', help='更新本地化翻译')
     parser_update.set_defaults(func=update)
