@@ -2,17 +2,23 @@ import html
 import json
 import logging
 import os
+import re
+import time
+from json import JSONDecodeError
 
 import openai
 from dotenv import load_dotenv
+from openai.error import RateLimitError
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ChatTranslator:
-    def __init__(self, language: str = "english"):
+    def __init__(self, language: str = "english", base_language: str = "chinese"):
         if os.path.exists('.env'):
             load_dotenv(dotenv_path='.env')
+        elif os.path.exists('../.env'):
+            load_dotenv(dotenv_path='../.env')
         elif os.path.exists('../../.env'):
             load_dotenv(dotenv_path='../../.env')
         else:
@@ -28,16 +34,16 @@ class ChatTranslator:
 
         self._temperature = float(os.environ.get('OPENAI_TEMPERATURE'))
         self._language = language
+        self._base_language = base_language
         self._rules = r"""
             2. Rule
-                - The format of the answer is {{"message":200,"content":"$"}} and replace $ with what you translate.
-                - If you don't know the language you need to translate to, the format of the answer is {{"message":404,"content":"unknown language"\}}
-                - If the sentence contains any punctuation, just keep it in the same place in the translation
-                - If the sentence contains any line break, just keep it in the same place in the translation and don't replace it to space.
-                - If the sentence contains any special symbols like \n or &#x0a; or '&quot;', just keep it in the same place in the translation. 
+                -  No matter how much you don't understand, just simply translate it. If you really don't know what to translate, just repeat what i give you to translate as your translation.  
+                - The format of the answer is {"message":200,"content":"$"} and replace $ with what you translate.
+                - The translation should be natural, fluent and brief. The structure of the sentence should be the same as the original one.
                 - If the sentence contains any special symbols like '$\\n$' or anything else you don't understand, just keep it in the same place in the translation.
-                - The translation should be natural, fluent and brief. The structure of the sentence should be the same as the original one."""
-        self._instruction = self.generate_instruction(self, language)
+                - If the sentence contains any punctuation or number, just keep it in the same place in the translation
+                - If the sentence contains any line break, just keep it in the same place in the translation and don't replace it to space."""
+        self._instruction = self.generate_instruction(self, language, base_language)
         self._test_sentence = r"""
                 小提示：\n\n
                 1. 请在有“开始行动”按钮的界面再使用本功能；\n\n
@@ -49,63 +55,86 @@ class ChatTranslator:
                 需要视频分辨率为 16:9，无黑边、模拟器边框、异形屏矫正等干扰元素\n\n
                 """
 
-    def translate(self, sentence: str = None, target_language: str = None, model=None, temperature: float = None):
+    def translate(self, sentence: str = None, target_language: str = None, base_language: str = None, model=None,
+                  temperature: float = None):
         # TODO 添加对话长度限制 添加代理
-        try:
-            if sentence is None:
-                sentence = self._test_sentence
-            if target_language is not None:
-                self.set_language(target_language)
-            if model is None:
-                model = self._model
-            if temperature is None:
-                temperature = self._temperature
+        for _ in range(3):
+            msg = ""
+            new_sentence = ""
+            try:
+                if sentence is None:
+                    sentence = self._test_sentence
+                if target_language is not None or base_language is not None:
+                    self.set_language(target_language, base_language)
+                if model is None:
+                    model = self._model
+                if temperature is None:
+                    temperature = self._temperature
 
-            new_sentence = html.unescape(sentence).replace(r'\n', r'$\\n$')
-            completion = openai.ChatCompletion.create(
-                model=model,
-                temperature=temperature,
-                messages=[
-                    {"role": "system", "content": self._instruction},
-                    {"role": "user", "content": new_sentence},
-                ]
-            )
-            msg = completion['choices'][0]['message']['content']
-            msg_json = json.loads(msg)
-        except Exception as _:
-            logging.error(f"{type(_).__name__}: {_}")
-            return None
-        else:
+                new_sentence = html.unescape(sentence).replace(r'\n', r'$\\n$').replace('\n', r'$\\n$')
+                completion = openai.ChatCompletion.create(
+                    model=model,
+                    temperature=temperature,
+                    messages=[
+                        {"role": "system", "content": self._instruction},
+                        {"role": "user", "content": new_sentence},
+                    ]
+                )
+                msg = completion['choices'][0]['message']['content']
+                if '{{' in msg or '}}' in msg:
+                    msg.replace('{{', '{').replace('}}', '}')
+                msg_json = json.loads(msg)
+                time.sleep(0.5)
+            except RateLimitError as _:
+                continue
+            except JSONDecodeError as _:
+                pt = re.compile(r"{[^{].*?:.*?,.*?:[^}]*}")
+                if pt.search(msg):
+                    msg = pt.search(msg).group()
+                    try:
+                        msg_json = json.loads(msg)
+                    except Exception as _:
+                        logging.error(f"{type(_).__name__}: {_} msg:{msg}")
+                        return msg
+                else:
+                    logging.error(f"{type(_).__name__}: {_} msg:{msg}")
+                    return msg
+            except Exception as _:
+                logging.error(f"{type(_).__name__}: {_} msg:{msg}")
+                return None
             match msg_json['message']:
                 case 200:
                     # logging.info(f"translate success")
-                    content = msg_json['content'].replace(r'$\\n$', '\n').replace(r'$\n$', '\n').replace('$\n$', '\n')
+                    content = msg_json['content'].replace(r'$\\n$', '\n').replace(r'$\n$', '\n') \
+                        .replace('$\n$', '\n')
                     return content
                 case 404:
-                    logging.error(f"translate error: {msg_json['content']}")
-                    return None
+                    logging.error(f"translate error:{new_sentence}| {msg_json['content']}")
+                    return msg_json['content']
                 case _:
                     logging.error(f"translate error: {msg_json}")
                     return None
 
-    def set_language(self, language):
-        self._language = language
-        self._instruction = self.generate_instruction(self, language)
+    def set_language(self, target_language, base_language):
+        self._language = target_language if target_language is not None else self._language
+        self._base_language = base_language if base_language is not None else self._base_language
+        self._instruction = self.generate_instruction(self, self._language, self._base_language)
 
     def get_language(self):
         return self._language
 
     @staticmethod
-    def generate_instruction(self, language):
+    def generate_instruction(self, target_language, base_language="Chinese"):
         return fr"""
             1. Role
-                - you are a translator, translate everything i give into {language}.
-            """ + self._rules
+                - you are a translator,don't ask anything, just translate everything i give from {base_language} to {target_language}.
+            """ + self._rules + """
+                - Don't forget the given rules. Now here comes the sentence or words you need to translate, please translate:"""
 
     def add_rules(self, rules: str):
         self._rules += """
                 - """ + rules.strip()
-        self._instruction = self.generate_instruction(self, self._language)
+        self._instruction = self.generate_instruction(self, self._language, self._base_language)
 
     def get_instruction(self):
         return self._instruction
