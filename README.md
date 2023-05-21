@@ -4,6 +4,57 @@
 
 ## TODO
 
+- [ ] 调用git api获取中文文档旧版本完整文本内容
+- [ ] githook
+- [ ] 完成后格式化xaml
+
+## 配置
+
+在使用前，您需要配置OpenAI API密钥。运行init子命令将会提示您输入API密钥和文档根目录，并将其存储在.env文件中。
+
+## 功能
+
+### 初始化工具
+
+要初始化工具，请运行以下命令：
+
+```bash
+python main.py init
+```
+
+### 创建其他语言的文档
+
+要为其他语言创建文档，请运行以下命令：
+
+```bash
+python main.py create
+```
+
+如果要强制覆盖已有的部分，请使用-f或--force标志：
+如果要跳过chatgpt翻译进行测试，请使用-t或--test标志
+
+### 更新本地化翻译
+
+要更新本地化翻译，请运行以下命令：
+
+```bash
+python main.py update
+```
+
+如果要跳过chatgpt翻译进行测试，请使用-t或--test标志
+
+## 依赖
+
+运行
+
+```bash
+pip install -r requirements.txt
+```
+
+Enjoy!
+
+## 要求
+
 自动本地化有几点要求看看能不能做到：
 
 1. 不要破坏缩进（包括空行不带空格）
@@ -30,55 +81,3 @@
         zh-cn -> ko-kr
         zh-cn -> en-us
     ```
-
-## 配置
-
-在使用前，您需要配置OpenAI API密钥。运行init子命令将会提示您输入API密钥，并将其存储在.env文件中。
-
-## 功能
-
-### 初始化工具
-
-要初始化工具，请运行以下命令：
-
-```bash
-python main.py init
-```
-
-### 创建其他语言的文档
-
-要为其他语言创建文档，请运行以下命令：
-
-```bash
-python main.py create
-```
-
-如果要强制覆盖已有的部分，请使用-f或--force标志：
-
-```bash
-python main.py create -f
-```
-
-### 更新本地化翻译
-
-要更新本地化翻译，请运行以下命令：
-
-```bash
-python main.py update
-```
-
-使用-a或者--arg参数传递额外的参数：
-
-```bash
-python main.py update -a "argument"
-```
-
-## 依赖
-
-运行
-
-```bash
-pip install -r requirements.txt
-```
-
-Enjoy!
