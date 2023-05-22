@@ -43,11 +43,11 @@ class XamlParser:
 
     """
 
-    def __init__(self, parse_type=0, file=None, xaml_string=None, language=None, encoding='utf-8'):
+    def __init__(self, file=None, parse_type=0, xaml_string=None, language=None, encoding='utf-8'):
         """
         初始化XamlParser类
-        :param parse_type: 0表示从文件解析，1表示从字符串解析
         :param file: 从文件解析时，传入文件路径
+        :param parse_type: 0表示从文件解析，1表示从字符串解析
         :param xaml_string: 从字符串解析时，传入xaml字符串
         :param language: 从字符串解析时，传入语言
         :param encoding: 从字符串解析时，传入编码
@@ -343,6 +343,10 @@ class XamlParser:
         compare_new_parser.write_xaml()
         self.write_xaml(final_tree)
         return final_tree
+
+    @property
+    def encoding(self):
+        return self.__encoding
 
     @property
     def cp_tree(self):

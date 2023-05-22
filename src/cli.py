@@ -1,13 +1,13 @@
 import argparse
 import logging
 import os
-from copy import deepcopy
 from shutil import copy
 from typing import Union
 
 from dotenv import load_dotenv
 
 from src.file_loader.xaml_load import XamlParser
+from src.git import get_latest_file_content
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -48,12 +48,11 @@ def update(args):
     root_path = os.getenv("LOCALIZATION_PATH")
     assert root_path, "LOCALIZATION_PATH is not set"
     zh_cn_path = os.path.join(root_path, "zh-cn.xaml")
-    zh_cn_new_path = os.path.join(root_path, "zh-cn_new.xaml")
     en_us_path = os.path.join(root_path, "en-us.xaml")
     zh_tw_path = os.path.join(root_path, "zh-tw.xaml")
     ja_jp_path = os.path.join(root_path, "ja-jp.xaml")
     ko_kr_path = os.path.join(root_path, "ko-kr.xaml")
-    translate_update(args.test, (zh_cn_path, zh_cn_new_path, en_us_path, zh_tw_path, ja_jp_path, ko_kr_path))
+    translate_update(args.test, (zh_cn_path, en_us_path, zh_tw_path, ja_jp_path, ko_kr_path))
 
 
 def generate_force(test, paths: Union[list, tuple, set]):
@@ -84,17 +83,25 @@ def generate_compare(test, paths: Union[list, tuple, set]):
 
 
 def translate_update(test, paths: Union[list, tuple, set]):
-    # TODO: 调用git获取中文新旧版本
-    zh_cn_path, zh_cn_new_path, en_us_path, zh_tw_path, ja_jp_path, ko_kr_path = paths
-    zh_cn_parser = XamlParser(zh_cn_path)
-    zh_cn_new_parser = XamlParser(zh_cn_new_path)
-    en_us_parser = XamlParser(en_us_path)
-    en_us_old_parser = deepcopy(en_us_parser)
+    zh_cn_path, en_us_path, zh_tw_path, ja_jp_path, ko_kr_path = paths
+    zh_cn_new_parser = XamlParser(zh_cn_path)
+    zh_cn_old_content = get_latest_file_content(file_path=zh_cn_path, encoding=zh_cn_new_parser.encoding)
+    zh_cn_old_parser = XamlParser(parse_type=1,
+                                  xaml_string=zh_cn_old_content,
+                                  language=zh_cn_new_parser.language,
+                                  encoding=zh_cn_new_parser.encoding)
+    en_us_new_parser = XamlParser(en_us_path)
+    en_us_old_content = get_latest_file_content(file_path=en_us_path, encoding=en_us_new_parser.encoding)
+    en_us_old_parser = XamlParser(parse_type=1,
+                                  xaml_string=en_us_old_content,
+                                  language=en_us_new_parser.language,
+                                  encoding=en_us_new_parser.encoding)
     zh_tw_parser = XamlParser(zh_tw_path)
     ja_jp_parser = XamlParser(ja_jp_path)
     ko_kr_parser = XamlParser(ko_kr_path)
-    zh_tw_parser.update_translate(zh_cn_parser, zh_cn_new_parser, skip_translate=test)
-    en_us_parser.update_translate(zh_cn_parser, zh_cn_new_parser, skip_translate=test)
+    zh_tw_parser.update_translate(zh_cn_old_parser, zh_cn_new_parser, skip_translate=test)
+    # TODO: 英文更新翻译逻辑?
+    en_us_new_parser.translate_compare(zh_cn_new_parser, skip_translate=test)
     en_us_new_parser = XamlParser(en_us_path)
     ja_jp_parser.update_translate(en_us_old_parser, en_us_new_parser, skip_translate=test)
     ko_kr_parser.update_translate(en_us_old_parser, en_us_new_parser, skip_translate=test)
