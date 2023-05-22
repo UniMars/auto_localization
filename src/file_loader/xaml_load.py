@@ -71,7 +71,8 @@ class XamlParser:
         self.__cp_root.append(self.__cp_merged_node)
         self.__gen_cp_tree_by_traverse(element=self.__root, current_cp_node=self.__cp_root)
 
-    def __from_file(self, file):
+    @staticmethod
+    def __from_file(file):
         assert os.path.exists(file), 'file not exists'
         encoding = judge_encoding(file)
         language = parse_lang_str(file)
@@ -183,6 +184,22 @@ class XamlParser:
             return False
         return True
 
+    def xpath(self, xpath_str, only_one=True, accept_empty=False):
+        ns = self.nsmap
+        if None in ns:
+            del ns[None]
+        if "" in ns:
+            del ns[""]
+        search_result = self.tree.xpath(xpath_str, namespaces=ns)
+        if not len(search_result):
+            assert accept_empty, f"xpath: {xpath_str} 搜索结果为空"
+            yield None
+        if only_one:
+            assert len(search_result) == 1, f"xpath: {search_result} 搜索结果数量不为1"
+            yield search_result[0]
+        else:
+            yield from search_result
+
     def translate_force(self, target_path, skip_translate=False):
         """
         强制输出本文件到目标文件的翻译，完成后本文件也会更新
@@ -192,7 +209,7 @@ class XamlParser:
         """
         target_language = parse_lang_str(target_path)
         output_tree = deepcopy(self.cp_tree)
-        chat = ChatTranslator(language=target_language, base_language=self.language)
+        chat = None if skip_translate else ChatTranslator(language=target_language, base_language=self.language)
         for i in self.__merged_node.findall('.//s:String[@x:Key]', namespaces=self.__nsmap):
             key = i.get(self.__x_key_ns)
             node = output_tree.find(f'.//s:String[@x:Key="{key}"]', namespaces=self.__nsmap)
@@ -212,10 +229,8 @@ class XamlParser:
         assert self.nsmap == compare_parser.nsmap, f"{self.language} 和 {compare_parser.language}命名空间不一致"
         assert self.x_key_ns == compare_parser.x_key_ns, f"{self.language}和{compare_parser.language}x:Key命名空间不一致"
         assert self.x_uid_ns == compare_parser.x_uid_ns, f"{self.language}和{compare_parser.language}x:Uid命名空间不一致"
-        ns = self.nsmap
-        ns.pop(None)
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
-        chat = ChatTranslator(language=self.language, base_language=compare_parser.language)
+        chat = None if skip_translate else ChatTranslator(language=self.language, base_language=compare_parser.language)
         res = main.diff_trees(target_cp_tree, base_cp_tree, diff_options={
             'F': 0.1,
             'ratio_mode': 'accurate',
@@ -224,10 +239,8 @@ class XamlParser:
         comment_list = []
         for i in res:
             if type(i).__name__ == 'MoveNode' and 'comment()' in i.node:
-                search_result = compare_parser.tree.xpath(i.target, namespaces=ns)
-                assert len(search_result) == 1, f"xpath: {search_result} 搜索结果数量不为1"
-                str_node = search_result[0][i.position]
-                assert str_node.tag == etree.Comment, f"xpath: {search_result} 搜索结果不为comment"
+                str_node = compare_parser.xpath(i.target)[i.position]
+                assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
                 node_position = "{}/comment()[{}]".format(i.target,
                                                           len(str_node.xpath('preceding-sibling::comment()')) + 1)
                 new_action.append(InsertComment(i.target, i.position, str_node.text))
@@ -236,19 +249,15 @@ class XamlParser:
             elif type(i).__name__ == 'UpdateTextIn':
                 if 'comment()' in i.node:
                     continue
-                search_result = compare_parser.tree.xpath(i.node, namespaces=ns)
-                assert len(search_result) == 1, f"xpath: {search_result} 搜索结果数量不为1"
-                str_node = search_result[0]
+                str_node = next(compare_parser.xpath(i.node))
                 text = str_node.text if skip_translate else chat.translate(str_node.text)
                 new_action.append(UpdateTextIn(i.node, text))
             elif type(i).__name__ == 'InsertComment':
                 if i.target + "/comment()" in comment_list[0]:
                     comment_list.pop(0)
                     continue
-                search_result = compare_parser.tree.xpath(i.target, namespaces=ns)
-                assert len(search_result) == 1, f"xpath: {search_result} 搜索结果数量不为1"
-                str_node = search_result[0][i.position]
-                assert str_node.tag == etree.Comment, f"xpath: {search_result} 搜索结果不为comment"
+                str_node = compare_parser.xpath(i.target)[i.position]
+                assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
                 node_position = "{}/comment()[{}]".format(i.target,
                                                           len(str_node.xpath('preceding-sibling::comment()')) + 1)
                 new_action.append(InsertComment(i.target, i.position, str_node.text))
@@ -282,9 +291,8 @@ class XamlParser:
         assert compare_old_parser.x_uid_ns == compare_new_parser.x_uid_ns, \
             f"old {compare_old_parser.language}和 new {compare_new_parser.language}x:Uid命名空间不一致"
 
-        chat = ChatTranslator(language=self.language, base_language=compare_new_parser.language)
-        ns = self.nsmap
-        ns.pop(None)
+        chat = None if skip_translate else ChatTranslator(language=self.language,
+                                                          base_language=compare_new_parser.language)
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
         res = main.diff_trees(compare_old_tree, compare_new_tree, diff_options={
             'F': 0.1,
@@ -313,16 +321,8 @@ class XamlParser:
         return self.__cp_root
 
     @property
-    def cp_merged_node(self):
-        return self.__cp_merged_node
-
-    @property
     def tree(self):
         return self.__root
-
-    @property
-    def merged_node(self):
-        return self.__merged_node
 
     @property
     def nsmap(self):
@@ -346,19 +346,12 @@ class XamlParser:
     def language(self):
         return self.__language
 
+    @property
+    def tostring(self):
+        return etree.tostring(self.tree, encoding=self.__encoding, pretty_print=True).decode(self.__encoding)
+
 
 if __name__ == '__main__':
-    zh_parser = XamlParser(parse_type=0, file='../sample/zh-cn.xaml')
-    zh_new_parser = XamlParser(parse_type=0, file='../sample/zh-cn_new.xaml')
-    # zh_new_parser = XamlParser('../sample/zh-cn_new.xaml')
-    en_parser = XamlParser(parse_type=0, file='../sample/en-us.xaml')
-    # en_parser.write_xaml(file_path='../sample/en-us_copy2.xaml')
-    en_parser.translate_compare(zh_parser, skip_translate=True)
-    en_parser.update_translate(zh_parser, zh_new_parser, skip_translate=True)
-    # en_parser = XamlParser('../sample/en-us_copy2.xaml')
-    print()
-    # # zh_parser.translate('en-us')
-    # # zh_cp_parser = XamlParser('../sample/zh-cn_copy.xaml')
-    # target_parser = XamlParser('../sample/en-us.xaml')
-    # translate_compare()
+    zh_parser = XamlParser(parse_type=0, file='../../sample/zh-cn.xaml')
+    zh_new_parser = XamlParser(parse_type=0, file='../../sample/zh-cn_new.xaml')
     print()
