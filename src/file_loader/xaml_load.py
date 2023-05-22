@@ -119,7 +119,7 @@ class XamlParser:
                 current_cp_node.append(cp_node)
 
                 # 添加说明注释
-                chat = ChatTranslator(language=self.language, base_language="english")
+                # chat = ChatTranslator(language=self.language, base_language="english")
                 uid = child.get(self.__x_uid_ns)
                 new_comment = etree.Comment(f"${uid}:")
                 # new_comment.text += self.language + ' '

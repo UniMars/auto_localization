@@ -54,7 +54,6 @@ class TestXamlParser(unittest.TestCase):
         expected_en_language = "English"
         expected_ja_language = "Japanese"
         expected_ko_language = "Korean"
-        result_language = parse_lang_str(self.zh_path)
         self.assertEqual(expected_zh_cn_language, parse_lang_str(self.zh_path))
         self.assertEqual(expected_zh_tw_language, parse_lang_str(self.zh_tw_path))
         self.assertEqual(expected_en_language, parse_lang_str(self.en_force_path))
