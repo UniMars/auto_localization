@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from copy import deepcopy
@@ -9,8 +10,9 @@ from xmldiff.actions import UpdateTextIn, InsertComment, UpdateTextAfter
 
 from src.translator.translate import ChatTranslator
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# TODO 打印日志显示翻译进度
+
 def judge_encoding(file):
     with open(file, 'rb') as _:
         content = _.read()
@@ -50,6 +52,8 @@ class XamlParser:
         :param language: 从字符串解析时，传入语言
         :param encoding: 从字符串解析时，传入编码
         """
+        self.__test = False
+        self.__counter = 0
         if parse_type == 0:
             self._file_path, self.__encoding, self.__language, xaml_string = self.__from_file(file)
         elif parse_type == 1:
@@ -200,6 +204,18 @@ class XamlParser:
         else:
             yield from search_result
 
+    def counter(self, start=False, test=False, messages=""):
+        if test:
+            self.__test = True
+        if self.__test:
+            return
+        if start:
+            self.__counter = 0
+            logging.info(messages)
+        else:
+            self.__counter += 1
+        logging.info(f"{messages}: {self.__counter}")
+
     def translate_force(self, target_path, skip_translate=False):
         """
         强制输出本文件到目标文件的翻译，完成后本文件也会更新
@@ -210,10 +226,14 @@ class XamlParser:
         target_language = parse_lang_str(target_path)
         output_tree = deepcopy(self.cp_tree)
         chat = None if skip_translate else ChatTranslator(language=target_language, base_language=self.language)
+        self.counter(start=True,
+                     test=skip_translate,
+                     messages=f"start force translate {self.language} -> {target_language}")
         for i in self.__merged_node.findall('.//s:String[@x:Key]', namespaces=self.__nsmap):
             key = i.get(self.__x_key_ns)
             node = output_tree.find(f'.//s:String[@x:Key="{key}"]', namespaces=self.__nsmap)
             node.text = i.text if skip_translate else chat.translate(i.text)
+            self.counter(messages=f"translate {key}")
         self.write_xaml(output_tree, target_path)
         self.write_xaml()
 
@@ -231,6 +251,9 @@ class XamlParser:
         assert self.x_uid_ns == compare_parser.x_uid_ns, f"{self.language}和{compare_parser.language}x:Uid命名空间不一致"
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
         chat = None if skip_translate else ChatTranslator(language=self.language, base_language=compare_parser.language)
+        self.counter(start=True,
+                     test=skip_translate,
+                     messages=f"start compare translate {compare_parser.language} -> {self.language}")
         res = main.diff_trees(target_cp_tree, base_cp_tree, diff_options={
             'F': 0.1,
             'ratio_mode': 'accurate',
@@ -251,6 +274,7 @@ class XamlParser:
                     continue
                 str_node = next(compare_parser.xpath(i.node))
                 text = str_node.text if skip_translate else chat.translate(str_node.text)
+                self.counter(messages=f"translate {i.node}")
                 new_action.append(UpdateTextIn(i.node, text))
             elif type(i).__name__ == 'InsertComment':
                 if i.target + "/comment()" in comment_list[0]:
@@ -293,6 +317,9 @@ class XamlParser:
 
         chat = None if skip_translate else ChatTranslator(language=self.language,
                                                           base_language=compare_new_parser.language)
+        self.counter(start=True,
+                     test=skip_translate,
+                     messages=f"start compare translate {compare_new_parser.language} -> {self.language}")
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
         res = main.diff_trees(compare_old_tree, compare_new_tree, diff_options={
             'F': 0.1,
@@ -305,6 +332,7 @@ class XamlParser:
                     continue
                 elif 's:String' in i.node:
                     text = i.text if skip_translate else chat.translate(i.text)
+                    self.counter(messages=f"translate {i.node}")
                     new_actions.append(UpdateTextIn(i.node, text))
                 else:
                     new_actions.append(i)
