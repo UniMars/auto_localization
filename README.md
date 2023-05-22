@@ -12,36 +12,26 @@
 
 在使用前，您需要配置OpenAI API密钥。运行init子命令将会提示您输入API密钥和文档根目录，并将其存储在.env文件中。
 
-## 功能
-
-### 初始化工具
-
-要初始化工具，请运行以下命令：
-
+## 参数
 ```bash
-python main.py init
+python main.py -h
 ```
 
-### 创建其他语言的文档
-
-要为其他语言创建文档，请运行以下命令：
-
-```bash
-python main.py create
 ```
+可选参数:
+   -h, --help            显示提示信息
+   
+   {init,create,update}
+    init                初始化工具
+    
+    create              初始化其他语言的文档
+      -f, --force       强制覆盖已有的部分
+      -t, --test        跳过chatgpt翻译进行测试
+      
+    update              更新本地化翻译
+      -t, --test        跳过chatgpt翻译进行测试
 
-如果要强制覆盖已有的部分，请使用-f或--force标志：
-如果要跳过chatgpt翻译进行测试，请使用-t或--test标志
-
-### 更新本地化翻译
-
-要更新本地化翻译，请运行以下命令：
-
-```bash
-python main.py update
 ```
-
-如果要跳过chatgpt翻译进行测试，请使用-t或--test标志
 
 ## 依赖
 

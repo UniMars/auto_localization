@@ -109,12 +109,12 @@ def cli():
     parser_init = subparsers.add_parser('init', help='初始化工具')
     parser_init.set_defaults(func=initiate)
 
-    parser_create = subparsers.add_parser('create', help='初始化其他语言的文档')
+    parser_create = subparsers.add_parser('create', help='初始化其他语言的文档,可选参数：-f --force, -t --test')
     parser_create.set_defaults(func=create)
     parser_create.add_argument("-f", "--force", action="store_true", help="强制覆盖已有的部分")
     parser_create.add_argument("-t", "--test", action="store_true", help="测试更新情况（跳过chatgpt）")
 
-    parser_update = subparsers.add_parser('update', help='更新本地化翻译')
+    parser_update = subparsers.add_parser('update', help='更新本地化翻译,可选参数：-t --test')
     parser_update.set_defaults(func=update)
     parser_update.add_argument("-t", "--test", action="store_true", help="测试更新情况（跳过chatgpt）")
 
