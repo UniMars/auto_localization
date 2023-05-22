@@ -63,7 +63,7 @@ def generate_force(test, paths: Union[list, tuple, set]):
 
     # 生成中文翻译
     zh_cn_parser.translate_force(zh_tw_path, skip_translate=test)
-    zh_cn_parser.translate_force(en_us_path, skip_translate=test)
+    zh_cn_parser.translate_compare(en_us_path, skip_translate=test)
     en_us_parser.translate_force(ja_jp_path, skip_translate=test)
     en_us_parser.translate_force(ko_kr_path, skip_translate=test)
     logging.info("generate force done")

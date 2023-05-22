@@ -18,17 +18,20 @@ python main.py -h
 ```
 
 ```
-可选参数:
-   -h, --help            显示提示信息
+options:
+   -h, --help            show this help message and exit
+
+positional arguments:
    
    {init,create,update}
-    init                初始化工具
+   
+   init                初始化工具
     
-    create              初始化其他语言的文档
+   create              初始化其他语言的文档
       -f, --force       强制覆盖已有的部分
       -t, --test        跳过chatgpt翻译进行测试
       
-    update              更新本地化翻译
+   update              更新本地化翻译
       -t, --test        跳过chatgpt翻译进行测试
 
 ```
