@@ -13,6 +13,7 @@
 在使用前，您需要配置OpenAI API密钥。运行init子命令将会提示您输入API密钥和文档根目录，并将其存储在.env文件中。
 
 ## 参数
+
 ```bash
 python main.py -h
 ```
@@ -30,9 +31,11 @@ positional arguments:
    create              初始化其他语言的文档
       -f, --force       强制覆盖已有的部分
       -t, --test        跳过chatgpt翻译进行测试
+      -l, --language    指定语言，可选参数：en-us, zh-tw, ja-jp, ko-kr
       
    update              更新本地化翻译
       -t, --test        跳过chatgpt翻译进行测试
+      -l, --language    指定语言，可选参数：en-us, zh-tw, ja-jp, ko-kr
 
 ```
 
