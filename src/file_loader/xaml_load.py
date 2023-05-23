@@ -262,7 +262,7 @@ class XamlParser:
         comment_list = []
         for i in res:
             if type(i).__name__ == 'MoveNode' and 'comment()' in i.node:
-                str_node = compare_parser.xpath(i.target)[i.position]
+                str_node = next(compare_parser.xpath(i.target))[i.position]
                 assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
                 node_position = "{}/comment()[{}]".format(i.target,
                                                           len(str_node.xpath('preceding-sibling::comment()')) + 1)
@@ -277,10 +277,10 @@ class XamlParser:
                 self.counter(messages=f"translate {i.node}")
                 new_action.append(UpdateTextIn(i.node, text))
             elif type(i).__name__ == 'InsertComment':
-                if i.target + "/comment()" in comment_list[0]:
+                if len(comment_list) and i.target + "/comment()" in comment_list[0]:
                     comment_list.pop(0)
                     continue
-                str_node = compare_parser.xpath(i.target)[i.position]
+                str_node = next(compare_parser.xpath(i.target))[i.position]
                 assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
                 node_position = "{}/comment()[{}]".format(i.target,
                                                           len(str_node.xpath('preceding-sibling::comment()')) + 1)

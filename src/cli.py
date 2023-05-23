@@ -9,7 +9,10 @@ from src.file_loader.xaml_load import XamlParser
 from src.git import get_latest_file_content
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+logging.debug(os.path.abspath('.env'))
+load_dotenv(dotenv_path='.env')
+if os.path.exists('../.env'):
+    load_dotenv(dotenv_path='../.env')
 root_path = os.getenv("LOCALIZATION_PATH")
 assert root_path, "LOCALIZATION_PATH is not set"
 zh_cn_path = os.path.join(root_path, "zh-cn.xaml")
@@ -144,9 +147,7 @@ def update_by_language(test, path, language):
     parser.update_translate(compare_old_parser, compare_new_parser, skip_translate=test)
 
 
-def cli():
-    logging.debug(os.path.abspath('.env'))
-    load_dotenv(dotenv_path='.env')
+def cli(test=None):
     parser = argparse.ArgumentParser(description="一个用于自动翻译本地化目录下不同语言文档的命令行工具。")
     subparsers = parser.add_subparsers()
     parser_init = subparsers.add_parser('init', help='初始化工具')
@@ -162,10 +163,14 @@ def cli():
     parser_update.set_defaults(func=update)
     parser_update.add_argument("-t", "--test", action="store_true", help="测试更新情况（跳过chatgpt）")
     parser_update.add_argument("-l", "--language", help="指定语言，可选参数：en-us, zh-tw, ja-jp, ko-kr")
-
-    args = parser.parse_args()
-    args.func(args)
+    if test:
+        args = parser.parse_args(test)
+        args.func(args)
+    else:
+        args = parser.parse_args()
+        args.func(args)
 
 
 if __name__ == '__main__':
+    cli(["create", "-t"])
     print()
