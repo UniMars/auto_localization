@@ -62,7 +62,8 @@ def translate_force(test):
 
     # 生成中文翻译
     zh_cn_parser.translate_force(zh_tw_path, skip_translate=test)
-    zh_cn_parser.translate_compare(en_us_path, skip_translate=test)
+    zh_cn_parser.translate_compare(en_us_parser, skip_translate=test)
+    en_us_parser = XamlParser(en_us_path)
     en_us_parser.translate_force(ja_jp_path, skip_translate=test)
     en_us_parser.translate_force(ko_kr_path, skip_translate=test)
     logging.info("generate force done")
@@ -76,6 +77,7 @@ def translate_compare(test):
     ko_kr_parser = XamlParser(ko_kr_path)
     zh_tw_parser.translate_compare(zh_cn_parser, skip_translate=test)
     en_us_parser.translate_compare(zh_cn_parser, skip_translate=test)
+    en_us_parser = XamlParser(en_us_path)
     ja_jp_parser.translate_compare(en_us_parser, skip_translate=test)
     ko_kr_parser.translate_compare(en_us_parser, skip_translate=test)
     logging.info("generate compare done")
@@ -172,5 +174,5 @@ def cli(test=None):
 
 
 if __name__ == '__main__':
-    cli(["create", "-t"])
+    cli(["create"])
     print()

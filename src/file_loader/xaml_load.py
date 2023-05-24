@@ -6,7 +6,7 @@ from copy import deepcopy
 from cchardet import detect
 from lxml import etree
 from xmldiff import main
-from xmldiff.actions import UpdateTextIn, InsertComment, UpdateTextAfter
+from xmldiff.actions import UpdateTextIn, InsertComment, UpdateTextAfter, DeleteNode
 
 from src.translator.translate import ChatTranslator
 
@@ -70,9 +70,11 @@ class XamlParser:
         self.__x_uid_ns, self.__x_key_ns = f'{{{self.__x_ns}}}Uid', f'{{{self.__x_ns}}}Key'
         self.__merged_node = self.__root.find('./ResourceDictionary.MergedDictionaries', namespaces=self.__nsmap)
         self.__cp_root = self.copy_node(self.__root, cp_text=True)
-
-        self.__cp_merged_node = self.copy_node(self.__merged_node, cp_text=True)
-        self.__cp_root.append(self.__cp_merged_node)
+        if self.__merged_node is not None:
+            self.__cp_merged_node = self.copy_node(self.__merged_node, cp_text=True)
+            self.__cp_root.append(self.__cp_merged_node)
+        else:
+            self.__cp_merged_node = None
         self.__gen_cp_tree_by_traverse(element=self.__root, current_cp_node=self.__cp_root)
 
     @staticmethod
@@ -93,9 +95,9 @@ class XamlParser:
                     continue
                 children = list(parent)
                 index = children.index(child)
-                if parent.tag == f'{{{self.__default_namespace}}}ResourceDictionary' and index == 0:
-                    continue
                 if index == 0:
+                    if self.__merged_node and parent.tag == f'{{{self.__default_namespace}}}ResourceDictionary':
+                        continue
                     # 注释节点为第一个节点
                     cp_comment = self.copy_node(child, cp_text=False)
                     current_cp_node.append(cp_comment)
@@ -204,6 +206,10 @@ class XamlParser:
         else:
             yield from search_result
 
+    def getpath(self, node):
+        tree = etree.ElementTree(self.__root)
+        return tree.getpath(node)
+
     def counter(self, start=False, test=False, messages=""):
         if test:
             self.__test = True
@@ -233,7 +239,8 @@ class XamlParser:
             key = i.get(self.__x_key_ns)
             node = output_tree.find(f'.//s:String[@x:Key="{key}"]', namespaces=self.__nsmap)
             node.text = i.text if skip_translate else chat.translate(i.text)
-            self.counter(messages=f"translate {key}")
+            node.text = i.text if node.text is None else node.text
+            self.counter(messages=f"translate {i.text[0:20]}")
         self.write_xaml(output_tree, target_path)
         self.write_xaml()
 
@@ -259,36 +266,50 @@ class XamlParser:
             'ratio_mode': 'accurate',
             'uniqueattrs': uniqueattrs})
         new_action = []
-        comment_list = []
+        logging.info(f"all movements contains {len([i for i in res if type(i).__name__ == 'UpdateTextIn'])} steps")
         for i in res:
             if type(i).__name__ == 'MoveNode' and 'comment()' in i.node:
-                str_node = next(compare_parser.xpath(i.target))[i.position]
-                assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
-                node_position = "{}/comment()[{}]".format(i.target,
-                                                          len(str_node.xpath('preceding-sibling::comment()')) + 1)
-                new_action.append(InsertComment(i.target, i.position, str_node.text))
-                new_action.append(UpdateTextAfter(node_position, str_node.tail))
-                comment_list.append(i.node)
+                try:
+                    str_node = next(compare_parser.xpath(i.target))[i.position]
+                    parts = i.node.split('/')
+                    # 提取父节点的路径
+                    parent_path = '/'.join(parts[:-1])
+                    node_position = "{}/comment()[{}]".format(i.target,
+                                                              len(str_node.xpath('preceding-sibling::comment()')) + 1)
+                    if parent_path == compare_parser.getpath(str_node.getparent()):
+                        # 如果父节点路径相同，说明
+                        new_action.append(i)
+                        new_action.append(UpdateTextIn(node_position, str_node.text))
+                        continue
+                    new_action.append(InsertComment(i.target, i.position, str_node.text))
+                    new_action.append(UpdateTextAfter(node_position, str_node.tail))
+                    new_action.append(DeleteNode(i.node))
+                except Exception as _:
+                    logging.warning(f"{type(_)}: {_}")
+                    new_action.append(i)
             elif type(i).__name__ == 'UpdateTextIn':
                 if 'comment()' in i.node:
                     continue
                 str_node = next(compare_parser.xpath(i.node))
-                text = str_node.text if skip_translate else chat.translate(str_node.text)
-                self.counter(messages=f"translate {i.node}")
+                if str_node.text.strip():
+                    text = str_node.text if skip_translate else chat.translate(str_node.text)
+                    text = str_node.text if text is None else text
+                else:
+                    text = str_node.text
+                self.counter(messages=f"translate {str_node.text[0:20]}")
                 new_action.append(UpdateTextIn(i.node, text))
             elif type(i).__name__ == 'InsertComment':
-                if len(comment_list) and i.target + "/comment()" in comment_list[0]:
-                    comment_list.pop(0)
-                    continue
+
                 str_node = next(compare_parser.xpath(i.target))[i.position]
-                assert str_node.tag == etree.Comment, f"xpath: {str_node.tag} 搜索结果不为comment"
-                node_position = "{}/comment()[{}]".format(i.target,
-                                                          len(str_node.xpath('preceding-sibling::comment()')) + 1)
-                new_action.append(InsertComment(i.target, i.position, str_node.text))
-                new_action.append(UpdateTextAfter(node_position, str_node.tail))
+                if str_node.tag == etree.Comment:
+                    node_position = "{}/comment()[{}]".format(i.target,
+                                                              len(str_node.xpath('preceding-sibling::comment()')) + 1)
+                    new_action.append(InsertComment(i.target, i.position, str_node.text))
+                    new_action.append(UpdateTextAfter(node_position, str_node.tail))
+                else:
+                    new_action.append(i)
             else:
                 new_action.append(i)
-        assert len(comment_list) == 0, f"comment剩余{comment_list}"
         final_tree = main.patch_tree(new_action, self.tree)
         compare_parser.write_xaml()
         self.write_xaml(final_tree, self._file_path)
@@ -326,13 +347,15 @@ class XamlParser:
             'ratio_mode': 'accurate',
             'uniqueattrs': uniqueattrs})
         new_actions = []
+        logging.info(f"all movements contains {len([i for i in res if type(i).__name__ == 'UpdateTextIn'])} steps")
         for i in res:
             if type(i).__name__ == 'UpdateTextIn':
                 if i.node.endswith('comment()[1]') and i.text[0] == '$':
                     continue
                 elif 's:String' in i.node:
                     text = i.text if skip_translate else chat.translate(i.text)
-                    self.counter(messages=f"translate {i.node}")
+                    text = i.text if text is None else text
+                    self.counter(messages=f"translate {i.text[0:20]}")
                     new_actions.append(UpdateTextIn(i.node, text))
                 else:
                     new_actions.append(i)
@@ -371,7 +394,10 @@ class XamlParser:
     @property
     def merged_root_tree(self):
         root = self.copy_node(self.__root, cp_text=True)
-        root.append(deepcopy(self.__merged_node))
+        if self.__merged_node is not None:
+            root.append(deepcopy(self.__merged_node))
+        else:
+            root = deepcopy(self.__root)
         return root
 
     @property
