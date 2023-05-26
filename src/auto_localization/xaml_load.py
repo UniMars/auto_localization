@@ -98,7 +98,7 @@ class XamlParser:
                 children = list(parent)
                 index = children.index(child)
                 if index == 0:
-                    if self.__merged_node and parent.tag == f'{{{self.__default_namespace}}}ResourceDictionary':
+                    if self.__merged_node is not None and parent.tag == f'{{{self.__default_namespace}}}ResourceDictionary':
                         continue
                     # 注释节点为第一个节点
                     cp_comment = self.copy_node(child, cp_text=False)
