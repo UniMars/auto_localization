@@ -2,10 +2,10 @@ import json
 import logging
 import os
 import re
+import time
 from json import JSONDecodeError
 
 import openai
-import time
 from dotenv import load_dotenv
 from openai.error import RateLimitError
 from opencc import OpenCC
@@ -17,8 +17,8 @@ class ChatTranslator:
     def __init__(self, language: str = "english", base_language: str = "chinese"):
         if os.path.exists('.env'):
             load_dotenv(dotenv_path='.env')
-        elif os.path.exists('../../.env'):
-            load_dotenv(dotenv_path='../../.env')
+        elif os.path.exists('../.env'):
+            load_dotenv(dotenv_path='../.env')
         elif os.path.exists('../../.env'):
             load_dotenv(dotenv_path='../../.env')
         else:
@@ -95,6 +95,7 @@ class ChatTranslator:
                 msg = completion['choices'][0]['message']['content'].strip()
                 msg = '{' + msg[2:] if msg.startswith("{{") else msg
                 msg = msg[:-2] + '}' if msg.endswith("}}") else msg
+                msg = msg.replace('\n', '\\n')if '\n' in msg else msg
                 msg_json = json.loads(msg)
                 time.sleep(0.1)
             except RateLimitError as _:
@@ -112,10 +113,10 @@ class ChatTranslator:
                         msg_json = json.loads(msg)
                     except Exception as _:
                         logging.error(f"{type(_).__name__}: {_} msg:{msg}")
-                        return msg
+                        return None
                 else:
                     logging.error(f"{type(_).__name__}: {_} msg:{msg}")
-                    return msg
+                    return None
             except Exception as _:
                 if i < 9:
                     message.append({"role": "assistant", "content": msg})
@@ -126,8 +127,8 @@ class ChatTranslator:
             match msg_json['message']:
                 case 200:
                     # logging.info(f"translate success")
-                    content = msg_json['content'].replace(r'$\\n$', '\\n').replace(r'$\n$', '\\n') \
-                        .replace('$\n$', '\\n')
+                    content = msg_json['content']
+                    # .replace(r'$\\n$', '\\n').replace(r'$\n$', '\\n').replace('$\n$', '\\n')
                     return content
                 case 404:
                     if i < 9:
@@ -135,7 +136,7 @@ class ChatTranslator:
                         message.append({"role": "user", "content": new_sentence})
                         continue
                     logging.error(f"translate error:{new_sentence}| {msg_json['content']}")
-                    return msg_json['content']
+                    return None
                 case _:
                     if i < 9:
                         message.append({"role": "assistant", "content": msg})
