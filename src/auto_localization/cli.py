@@ -5,14 +5,14 @@ from shutil import copy
 
 from dotenv import load_dotenv
 
-from src.file_loader.xaml_load import XamlParser
-from src.git import get_latest_file_content
+from .git import get_latest_file_content
+from .xaml_load import XamlParser
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug(os.path.abspath('.env'))
 load_dotenv(dotenv_path='.env')
-if os.path.exists('../.env'):
-    load_dotenv(dotenv_path='../.env')
+if os.path.exists('../../.env'):
+    load_dotenv(dotenv_path='../../.env')
 root_path = os.getenv("LOCALIZATION_PATH")
 assert root_path, "LOCALIZATION_PATH is not set"
 zh_cn_path = os.path.join(root_path, "zh-cn.xaml")
@@ -22,15 +22,13 @@ ja_jp_path = os.path.join(root_path, "ja-jp.xaml")
 ko_kr_path = os.path.join(root_path, "ko-kr.xaml")
 
 
-def initiate():
+def initiate(args):
     logging.info("initiate project")
     copy('./copy.env', '.env')
     with open('./copy.env', 'r') as f:
         content = f.read()
     api_key = input("please input openai api key:")
-    local_path = input("please input localization path:")
-    content.replace('OPENAI_API_KEY=\n', f'OPENAI_API_KEY={api_key}\n')
-    content.replace('LOCALIZATION_PATH=\n', f'LOCALIZATION_PATH={local_path}\n')
+    content = content.replace('OPENAI_API_KEY=\n', f'OPENAI_API_KEY={api_key}\n')
     with open(".env", "w") as f:
         f.write(content)
 
@@ -174,5 +172,5 @@ def cli(test=None):
 
 
 if __name__ == '__main__':
-    cli(["create"])
+    cli(["init"])
     print()

@@ -1,17 +1,17 @@
 import unittest
 
-from xaml_load import XamlParser, judge_encoding, parse_lang_str
+from src import XamlParser, judge_encoding, parse_lang_str
 
 
 class TestXamlParser(unittest.TestCase):
 
     def setUp(self):
-        self.zh_sample_path = '../../sample/backup/zh-cn.xaml'
-        self.zh_new_sample_path = '../../sample/backup/zh-cn_new.xaml'
-        self.en_sample_path = '../../sample/backup/en-us.xaml'
-        self.en_force_sample_path = '../../sample/backup/en-us_force.xaml'
-        self.en_compare_sample_path = '../../sample/backup/en-us_compare.xaml'
-        self.en_update_sample_path = '../../sample/backup/en-us_update.xaml'
+        self.zh_sample_path = '../example/zh-cn.xaml'
+        self.zh_new_sample_path = '../example/zh-cn_new.xaml'
+        self.en_sample_path = '../example/en-us.xaml'
+        self.en_force_sample_path = '../example/en-us_force.xaml'
+        self.en_compare_sample_path = '../example/en-us_compare.xaml'
+        self.en_update_sample_path = '../example/en-us_update.xaml'
         with open(self.zh_sample_path, 'r', encoding='utf-8') as f:
             self.zh_sample_content = f.read()
         with open(self.zh_new_sample_path, 'r', encoding='utf-8') as f:
@@ -24,14 +24,14 @@ class TestXamlParser(unittest.TestCase):
             self.en_compare_sample_content = f.read()
         with open(self.en_update_sample_path, 'r', encoding='utf-8') as f:
             self.en_update_sample_content = f.read()
-        self.zh_path = '../../sample/zh-cn.xaml'
-        self.zh_new_path = '../../sample/zh-cn_new.xaml'
-        self.en_force_path = '../../sample/en-us_force.xaml'
-        self.en_compare_path = '../../sample/en-us_compare.xaml'
-        self.en_update_path = '../../sample/en-us_update.xaml'
-        self.zh_tw_path = '../../sample/zh-tw.xaml'
-        self.ja_path = '../../sample/ja-jp.xaml'
-        self.ko_path = '../../sample/ko-kr.xaml'
+        self.zh_path = './data/zh-cn.xaml'
+        self.zh_new_path = './data/zh-cn_new.xaml'
+        self.en_force_path = './data/en-us_force.xaml'
+        self.en_compare_path = './data/en-us_compare.xaml'
+        self.en_update_path = './data/en-us_update.xaml'
+        self.zh_tw_path = './data/zh-tw.xaml'
+        self.ja_path = './data/ja-jp.xaml'
+        self.ko_path = './data/ko-kr.xaml'
         with open(self.zh_path, 'w', encoding='utf-8') as f:
             f.write(self.zh_sample_content)
         with open(self.zh_new_path, 'w', encoding='utf-8') as f:

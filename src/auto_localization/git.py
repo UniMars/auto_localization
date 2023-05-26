@@ -1,10 +1,3 @@
-"""
-Author       : UniMars
-Date         : 2023-05-24 03:00:39
-LastEditors  : UniMars
-LastEditTime : 2023-05-24 03:18:47
-Description  : file head
-"""
 import os.path
 import subprocess
 
@@ -29,4 +22,4 @@ def get_latest_file_content(file_path='./cli.py', encoding='utf-8'):
 
 
 if __name__ == '__main__':
-    print(get_latest_file_content('./cli.py'))
+    print(get_latest_file_content('cli.py'))

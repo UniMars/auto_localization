@@ -8,7 +8,9 @@ from lxml import etree
 from xmldiff import main
 from xmldiff.actions import UpdateTextIn, InsertComment, UpdateTextAfter, DeleteNode
 
-from src.translator.translate import ChatTranslator
+from .translate import ChatTranslator
+
+SPACE = '{http://www.w3.org/XML/1998/namespace}space'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -79,7 +81,7 @@ class XamlParser:
 
     @staticmethod
     def __from_file(file):
-        assert os.path.exists(file), 'file not exists'
+        assert os.path.exists(file), f'{file}file not exists'
         encoding = judge_encoding(file)
         language = parse_lang_str(file)
         with open(file, 'r', encoding=encoding) as f:
@@ -180,10 +182,12 @@ class XamlParser:
         assert self.x_uid_ns == compare_parser.x_uid_ns, f"{self.language} 和 {compare_parser.language}x:Uid命名空间不一致"
         pt = re.compile(r'/\*/\*/\*\[\d*]/comment\(\)\[1]')
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
+        ignored_attrs = [SPACE]
         res = main.diff_trees(this_tree, compare_tree, diff_options={
             'F': 0.1,
             'ratio_mode': 'accurate',
-            'uniqueattrs': uniqueattrs})
+            'uniqueattrs': uniqueattrs,
+            'ignored_attrs': ignored_attrs, })
         for i in res:
             if type(i).__name__ == 'UpdateTextIn' and pt.search(i.node):
                 continue
@@ -235,7 +239,8 @@ class XamlParser:
         self.counter(start=True,
                      test=skip_translate,
                      messages=f"start force translate {self.language} -> {target_language}")
-        for i in self.__merged_node.findall('.//s:String[@x:Key]', namespaces=self.__nsmap):
+        t = self.__merged_node if self.__merged_node is not None else self.__root
+        for i in t.findall('.//s:String[@x:Key]', namespaces=self.__nsmap):
             key = i.get(self.__x_key_ns)
             node = output_tree.find(f'.//s:String[@x:Key="{key}"]', namespaces=self.__nsmap)
             node.text = i.text if skip_translate else chat.translate(i.text)
@@ -257,6 +262,7 @@ class XamlParser:
         assert self.x_key_ns == compare_parser.x_key_ns, f"{self.language}和{compare_parser.language}x:Key命名空间不一致"
         assert self.x_uid_ns == compare_parser.x_uid_ns, f"{self.language}和{compare_parser.language}x:Uid命名空间不一致"
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
+        ignored_attrs = [SPACE]
         chat = None if skip_translate else ChatTranslator(language=self.language, base_language=compare_parser.language)
         self.counter(start=True,
                      test=skip_translate,
@@ -264,7 +270,8 @@ class XamlParser:
         res = main.diff_trees(target_cp_tree, base_cp_tree, diff_options={
             'F': 0.1,
             'ratio_mode': 'accurate',
-            'uniqueattrs': uniqueattrs})
+            'uniqueattrs': uniqueattrs,
+            'ignored_attrs': ignored_attrs, })
         new_action = []
         logging.info(f"all movements contains {len([i for i in res if type(i).__name__ == 'UpdateTextIn'])} steps")
         for i in res:
@@ -342,10 +349,13 @@ class XamlParser:
                      test=skip_translate,
                      messages=f"start compare translate {compare_new_parser.language} -> {self.language}")
         uniqueattrs = [self.x_key_ns, self.x_uid_ns]
+        ignored_attrs = [SPACE]
         res = main.diff_trees(compare_old_tree, compare_new_tree, diff_options={
             'F': 0.1,
             'ratio_mode': 'accurate',
-            'uniqueattrs': uniqueattrs})
+            'uniqueattrs': uniqueattrs,
+            'ignored_attrs': ignored_attrs
+        })
         new_actions = []
         logging.info(f"all movements contains {len([i for i in res if type(i).__name__ == 'UpdateTextIn'])} steps")
         for i in res:
@@ -410,6 +420,6 @@ class XamlParser:
 
 
 if __name__ == '__main__':
-    zh_parser = XamlParser(parse_type=0, file='../../sample/zh-cn.xaml')
-    zh_new_parser = XamlParser(parse_type=0, file='../../sample/zh-cn_new.xaml')
+    zh_parser = XamlParser(parse_type=0, file='../../example/zh-cn.xaml')
+    zh_new_parser = XamlParser(parse_type=0, file='../../example/zh-cn_new.xaml')
     print()
