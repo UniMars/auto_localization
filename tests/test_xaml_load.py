@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from src.auto_localization.xaml_load import judge_encoding, parse_lang_str, XamlParser
+from src.auto_localization import judge_encoding, parse_lang_str, XamlParser
 
 
 class TestXamlParser(unittest.TestCase):
