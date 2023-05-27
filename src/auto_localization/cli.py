@@ -30,7 +30,7 @@ def initiate(args):
     with open('./copy.env', 'r') as f:
         content = f.read()
     api_key = input("please input openai api key:")
-    content = content.replace('OPENAI_API_KEY=\n', f'OPENAI_API_KEY={api_key}\n')
+    content = content.replace('OPENAI_API_KEY=YOUR_API_KEY\n', f'OPENAI_API_KEY={api_key}\n')
     with open(".env", "w") as f:
         f.write(content)
 

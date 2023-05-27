@@ -7,7 +7,7 @@ from json import JSONDecodeError
 
 import openai
 from dotenv import load_dotenv
-from openai.error import RateLimitError
+from openai.error import RateLimitError, AuthenticationError
 from opencc import OpenCC
 
 logging.basicConfig(level=logging.INFO, format='MODULE:%(module)s - %(asctime)s - %(levelname)s - %(message)s')
@@ -126,6 +126,9 @@ class ChatTranslator:
                 else:
                     logging.error(f"{type(_).__name__}: {_} msg:{msg}")
                     return None
+            except AuthenticationError as _:
+                logging.error(f"{type(_).__name__}: {_} msg:{msg},maybe key not set correctly")
+                return None
             except Exception as _:
                 if i < 9:
                     message.append({"role": "assistant", "content": msg})
