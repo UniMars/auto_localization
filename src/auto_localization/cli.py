@@ -11,6 +11,8 @@ from .xaml_load import XamlParser
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug(os.path.abspath('.env'))
 load_dotenv(dotenv_path='.env')
+if os.path.exists('../.env'):
+    load_dotenv(dotenv_path='../.env')
 if os.path.exists('../../.env'):
     load_dotenv(dotenv_path='../../.env')
 root_path = os.getenv("LOCALIZATION_PATH")
@@ -147,7 +149,7 @@ def update_by_language(test, path, language):
     parser.update_translate(compare_old_parser, compare_new_parser, skip_translate=test)
 
 
-def cli(test=None):
+def cli_ui(test=None):
     parser = argparse.ArgumentParser(description="一个用于自动翻译本地化目录下不同语言文档的命令行工具。")
     subparsers = parser.add_subparsers()
     parser_init = subparsers.add_parser('init', help='初始化工具')
@@ -171,6 +173,10 @@ def cli(test=None):
         args.func(args)
 
 
+def main():
+    cli_ui()
+
+
 if __name__ == '__main__':
-    cli(["init"])
+    cli_ui(["init"])
     print()
