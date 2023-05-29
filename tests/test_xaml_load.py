@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from src.auto_localization.xaml_load import judge_encoding, parse_lang_str, XamlParser
+from src.auto_localization import judge_encoding, parse_lang_str, XamlParser
 
 
 class TestXamlParser(unittest.TestCase):
@@ -26,6 +26,8 @@ class TestXamlParser(unittest.TestCase):
             self.en_compare_sample_content = f.read()
         with open(self.en_update_sample_path, 'r', encoding='utf-8') as f:
             self.en_update_sample_content = f.read()
+        if not os.path.exists('tests/data'):
+            os.makedirs('tests/data')
         self.zh_path = 'tests/data/zh-cn.xaml'
         self.zh_new_path = 'tests/data/zh-cn_new.xaml'
         self.en_force_path = 'tests/data/en-us_force.xaml'
